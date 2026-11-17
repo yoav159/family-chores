@@ -47,6 +47,7 @@
   .dot{width:12px;height:12px;border-radius:50%}
   .person ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
   .person li{background:var(--bg);border-radius:10px;padding:5px 10px;font-size:14px}
+  .person li .x{border:0;background:var(--warn-soft);color:var(--warn);border-radius:99px;width:22px;height:22px;margin-inline-start:6px;font-size:12px;cursor:pointer;line-height:1}
   .person .empty{color:var(--muted);font-size:14px}
   .section-title{font-size:14px;color:var(--muted);margin:22px 0 4px}
 
@@ -171,11 +172,14 @@ function toggle(task){
   if (!me) return openPicker();
   if (busy) return; busy = true;
   const t = state.tasks.find(x => x.name === task);
+  if (!t) { busy = false; return; }
   const taking = !t.people.includes(me);
+  // הסרה רק של עצמי, ועם אישור
+  if (!taking && !confirm(`להסיר את "${task}" ממך?`)) { busy = false; return; }
   // עדכון מיידי במסך, הגיליון מתעדכן ברקע
   taking ? t.people.push(me) : t.people.splice(t.people.indexOf(me), 1);
   render();
-  google.script.run.withSuccessHandler(s => { busy = false; state = s; render(); toast(taking ? 'תודה ' + me + '! 💚' : 'שוחרר'); })
+  google.script.run.withSuccessHandler(s => { busy = false; state = s; render(); toast(taking ? 'תודה ' + me + '! 💚' : 'הוסר ממך'); })
     .withFailureHandler(fail).toggleCommit(task, me);
 }
 
@@ -200,7 +204,7 @@ function render(){
       return `<div class="task ${t.people.length ? '' : 'free'}">
         <div class="emoji">${emojiFor(t.name)}</div>
         <div class="body"><div class="name">${esc(t.name)}</div>${chips}</div>
-        <button class="btn ${mine ? 'drop' : 'take'}" data-task="${esc(t.name)}">${mine ? 'שלי ✓' : 'אני לוקח/ת'}</button>
+        <button class="btn ${mine ? 'drop' : 'take'}" data-task="${esc(t.name)}">${mine ? 'הסרה ממני ✕' : 'אני לוקח/ת'}</button>
       </div>`;
     }).join('') || '<div class="loading">אין משימות בגיליון עדיין</div>';
     list.querySelectorAll('[data-task]').forEach(b => b.onclick = () => toggle(b.dataset.task));
@@ -210,10 +214,11 @@ function render(){
     const blocks = people.map(p => {
       const ts = state.tasks.filter(t => t.people.includes(p));
       return `<div class="person"><h3><span class="dot" style="background:${colorFor(p)}"></span>${esc(p)}${p===me?' (אני)':''}</h3>
-        ${ts.length ? `<ul>${ts.map(t => `<li>${emojiFor(t.name)} ${esc(t.name)}</li>`).join('')}</ul>` : '<div class="empty">עוד לא בחר/ה משימה</div>'}</div>`;
+        ${ts.length ? `<ul>${ts.map(t => `<li>${emojiFor(t.name)} ${esc(t.name)}${p===me ? ` <button class="x" data-task="${esc(t.name)}" aria-label="הסרה ממני">✕</button>` : ''}</li>`).join('')}</ul>` : '<div class="empty">עוד לא בחר/ה משימה</div>'}</div>`;
     }).join('');
     const free = state.tasks.filter(t => !t.people.length);
     list.innerHTML = blocks + (free.length ? `<div class="section-title">עדיין פנויות</div><div class="person"><ul>${free.map(t => `<li>${emojiFor(t.name)} ${esc(t.name)}</li>`).join('')}</ul></div>` : '');
+    list.querySelectorAll('[data-task]').forEach(b => b.onclick = () => toggle(b.dataset.task));
   }
 }
 
