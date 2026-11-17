@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>משימות הבית</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f3ee; --card:#ffffff; --ink:#1f2328; --muted:#6b7280; --line:#e7e2d9;
+    --accent:#2f6f5e; --accent-soft:#e3efe9; --warn:#b4541a; --warn-soft:#fbeee4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Rubik,system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:560px;margin:0 auto;padding:16px 16px 96px}
+  header h1{font-size:24px;margin:8px 0 2px}
+  header .sub{color:var(--muted);font-size:14px}
+  .progress{margin:16px 0 4px;background:var(--line);border-radius:99px;height:10px;overflow:hidden}
+  .progress i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+  .ptext{font-size:13px;color:var(--muted)}
+
+  .me{display:flex;align-items:center;gap:10px;margin:18px 0 6px;padding:10px 12px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+  .me .lbl{color:var(--muted);font-size:14px}
+  .me b{font-size:16px}
+  .me button{margin-inline-start:auto}
+
+  .seg{display:flex;background:var(--line);border-radius:12px;padding:4px;margin:14px 0}
+  .seg button{flex:1;border:0;background:transparent;padding:9px;border-radius:9px;font:inherit;font-size:15px;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--card);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+
+  .task{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;display:flex;gap:12px;align-items:center}
+  .task.free{border-color:#f0d6c2}
+  .emoji{font-size:28px;width:44px;height:44px;display:grid;place-items:center;background:var(--bg);border-radius:12px;flex:none}
+  .task .body{flex:1;min-width:0}
+  .task .name{font-weight:500;font-size:17px}
+  .people{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .chip{font-size:13px;padding:3px 9px;border-radius:99px;color:#fff;white-space:nowrap}
+  .none{font-size:13px;color:var(--warn)}
+  .btn{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-size:14px;font-weight:500;cursor:pointer;flex:none;white-space:nowrap}
+  .btn.take{background:var(--accent);color:#fff}
+  .btn.drop{background:var(--accent-soft);color:var(--accent)}
+  .btn.ghost{background:transparent;color:var(--accent);padding:6px 8px}
+  .btn:disabled{opacity:.5}
+
+  .person{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
+  .person h3{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:8px}
+  .dot{width:12px;height:12px;border-radius:50%}
+  .person ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+  .person li{background:var(--bg);border-radius:10px;padding:5px 10px;font-size:14px}
+  .person .empty{color:var(--muted);font-size:14px}
+  .section-title{font-size:14px;color:var(--muted);margin:22px 0 4px}
+
+  /* מסך בחירת שם */
+  .overlay{position:fixed;inset:0;background:rgba(20,20,20,.45);display:none;align-items:flex-end;justify-content:center;z-index:10}
+  .overlay.show{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 16px 28px}
+  .sheet h2{margin:0 0 4px;font-size:20px}
+  .sheet p{margin:0 0 14px;color:var(--muted);font-size:14px}
+  .names{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .names button{border:0;border-radius:99px;padding:10px 16px;font:inherit;font-size:16px;color:#fff;cursor:pointer}
+  .newname{display:flex;gap:8px}
+  .newname input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:11px;font:inherit;font-size:16px}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;transition:transform .25s;z-index:20;max-width:90%}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .loading{text-align:center;color:var(--muted);padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>משימות הבית 🏡</h1>
+    <div class="sub">כל אחד בוחר במה הוא עוזר</div>
+    <div class="progress"><i id="bar" style="width:0"></i></div>
+    <div class="ptext" id="ptext"></div>
+  </header>
+
+  <div class="me" id="me" style="display:none">
+    <span class="lbl">אני:</span><b id="meName"></b>
+    <button class="btn ghost" onclick="openPicker()">החלפה</button>
+  </div>
+
+  <div class="seg">
+    <button id="tabTasks" class="on" onclick="setView('tasks')">כל המשימות</button>
+    <button id="tabPeople" onclick="setView('people')">מי לקח מה</button>
+  </div>
+
+  <div id="list"><div class="loading">טוען…</div></div>
+</div>
+
+<div class="overlay" id="picker">
+  <div class="sheet">
+    <h2>מי את/ה? 👋</h2>
+    <p>בוחרים פעם אחת, והטלפון יזכור.</p>
+    <div class="names" id="names"></div>
+    <div class="newname">
+      <input id="newName" placeholder="שם חדש" maxlength="20">
+      <button class="btn take" onclick="addName()">הוספה</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- מחוץ ל-Apps Script (דף עצמאי, למשל GitHub Pages) ----------
+   מדבר עם הסקריפט ב-fetch בלי עוגיות, כך שחשבון גוגל של ילד בדפדפן לא חוסם.
+   ‎?mock‎ בכתובת = מצב בדיקה מקומי בלי שרת. */
+const API_URL = 'https://script.google.com/macros/s/AKfycbx0QfmogW0H0G2kZKud7W7aPIroIs1wCeVfYO4BqHxvsl_IY-mSOQ7R6dY-v6-oAIbr/exec';
+if (!(window.google && google.script && google.script.run) && !/[?&]mock/.test(location.search)) {
+  const call = async (k, args) => {
+    const res = k === 'getState'
+      ? await fetch(API_URL + '?format=json&t=' + Date.now(), { credentials: 'omit' })
+      : await fetch(API_URL, { method: 'POST', credentials: 'omit', body: JSON.stringify({ action: k, args }) });
+    const data = await res.json();
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  };
+  const runner = (ok, fail) => new Proxy({}, { get: (_, k) => {
+    if (k === 'withSuccessHandler') return h => runner(h, fail);
+    if (k === 'withFailureHandler') return h => runner(ok, h);
+    return (...a) => call(k, a).then(r => ok && ok(r), e => fail && fail(e));
+  }});
+  window.google = { script: { run: runner() } };
+}
+/* ---------- מצב מקומי לבדיקה ---------- */
+if (!(window.google && google.script && google.script.run)) {
+  const mock = {
+    tasks: ['מדיח','לקפל כביסה','לרוקן מיקלחת','לנקות שיש','לנקות חלונות','לנקות מכונית'].map(n=>({name:n,people:[]})),
+    family: ['נעמה','יואב']
+  };
+  mock.tasks[0].people = ['נעמה'];
+  const api = {
+    getState: () => JSON.parse(JSON.stringify(mock)),
+    toggleCommit: (t,p) => { const task = mock.tasks.find(x=>x.name===t); const i = task.people.indexOf(p);
+      i<0 ? task.people.push(p) : task.people.splice(i,1); if(!mock.family.includes(p)) mock.family.push(p); return api.getState(); },
+    addMember: (n) => { if(!mock.family.includes(n)) mock.family.push(n); return api.getState(); }
+  };
+  const runner = (ok, fail) => new Proxy({}, { get: (_, k) => {
+    if (k === 'withSuccessHandler') return h => runner(h, fail);
+    if (k === 'withFailureHandler') return h => runner(ok, h);
+    return (...a) => setTimeout(() => { try { ok && ok(api[k](...a)); } catch(e) { fail && fail(e); } }, 250);
+  }});
+  window.google = { script: { run: runner() } };
+}
+
+/* ---------- אפליקציה ---------- */
+let state = null, view = 'tasks', busy = false;
+let me = null;
+try { me = localStorage.getItem('chores.me'); } catch(e) {}
+
+const EMOJI = [
+  [/מדיח|כלים/,'🍽️'],[/כביסה|לקפל|בגדים/,'👕'],[/מקלחת|מיקלחת|אמבט/,'🚿'],[/שיש|מטבח/,'🧽'],
+  [/חלון|חלונות/,'🪟'],[/מכונית|רכב|אוטו/,'🚗'],[/זבל|פח/,'🗑️'],[/כלב|חתול|לטייל/,'🐕'],
+  [/שואב|לשאוב|רצפה|לשטוף/,'🧹'],[/בישול|לבשל|ארוחה/,'🍳'],[/קניות|סופר/,'🛒'],[/צמחים|גינה|להשקות/,'🪴'],
+  [/מיטה|מצעים|חדר/,'🛏️'],[/שירותים|אסלה/,'🚽']
+];
+const emojiFor = n => (EMOJI.find(([re]) => re.test(n)) || [0,'✨'])[1];
+const COLORS = ['#2f6f5e','#b4541a','#5b5bd6','#c2417a','#2a7ab0','#8a6d1f','#7c4dbd','#3d8b3d'];
+const colorFor = n => { let h = 0; for (const c of n) h = (h*31 + c.charCodeAt(0)) >>> 0; return COLORS[h % COLORS.length]; };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2200); }
+function fail(e){ busy = false; toast('אופס: ' + (e && e.message || e)); render(); }
+
+function load(){ google.script.run.withSuccessHandler(s => { state = s; render(); if(!me) openPicker(); }).withFailureHandler(fail).getState(); }
+
+function setView(v){ view = v; document.getElementById('tabTasks').classList.toggle('on', v==='tasks'); document.getElementById('tabPeople').classList.toggle('on', v==='people'); render(); }
+
+function toggle(task){
+  if (!me) return openPicker();
+  if (busy) return; busy = true;
+  const t = state.tasks.find(x => x.name === task);
+  const taking = !t.people.includes(me);
+  // עדכון מיידי במסך, הגיליון מתעדכן ברקע
+  taking ? t.people.push(me) : t.people.splice(t.people.indexOf(me), 1);
+  render();
+  google.script.run.withSuccessHandler(s => { busy = false; state = s; render(); toast(taking ? 'תודה ' + me + '! 💚' : 'שוחרר'); })
+    .withFailureHandler(fail).toggleCommit(task, me);
+}
+
+function render(){
+  if (!state) return;
+  const total = state.tasks.length, covered = state.tasks.filter(t => t.people.length).length;
+  document.getElementById('bar').style.width = (total ? covered/total*100 : 0) + '%';
+  document.getElementById('ptext').textContent = covered === total && total
+    ? 'כל המשימות נלקחו 🎉' : `${covered} מתוך ${total} משימות נלקחו`;
+  document.getElementById('me').style.display = me ? 'flex' : 'none';
+  document.getElementById('meName').textContent = me || '';
+
+  const list = document.getElementById('list');
+  if (view === 'tasks') {
+    // משימות פנויות קודם
+    const sorted = [...state.tasks].sort((a,b) => (a.people.length>0) - (b.people.length>0));
+    list.innerHTML = sorted.map(t => {
+      const mine = me && t.people.includes(me);
+      const chips = t.people.length
+        ? `<div class="people">${t.people.map(p => `<span class="chip" style="background:${colorFor(p)}">${esc(p)}</span>`).join('')}</div>`
+        : `<div class="none">עדיין אף אחד</div>`;
+      return `<div class="task ${t.people.length ? '' : 'free'}">
+        <div class="emoji">${emojiFor(t.name)}</div>
+        <div class="body"><div class="name">${esc(t.name)}</div>${chips}</div>
+        <button class="btn ${mine ? 'drop' : 'take'}" data-task="${esc(t.name)}">${mine ? 'שלי ✓' : 'אני לוקח/ת'}</button>
+      </div>`;
+    }).join('') || '<div class="loading">אין משימות בגיליון עדיין</div>';
+    list.querySelectorAll('[data-task]').forEach(b => b.onclick = () => toggle(b.dataset.task));
+  } else {
+    const people = [...state.family];
+    if (me && !people.includes(me)) people.unshift(me);
+    const blocks = people.map(p => {
+      const ts = state.tasks.filter(t => t.people.includes(p));
+      return `<div class="person"><h3><span class="dot" style="background:${colorFor(p)}"></span>${esc(p)}${p===me?' (אני)':''}</h3>
+        ${ts.length ? `<ul>${ts.map(t => `<li>${emojiFor(t.name)} ${esc(t.name)}</li>`).join('')}</ul>` : '<div class="empty">עוד לא בחר/ה משימה</div>'}</div>`;
+    }).join('');
+    const free = state.tasks.filter(t => !t.people.length);
+    list.innerHTML = blocks + (free.length ? `<div class="section-title">עדיין פנויות</div><div class="person"><ul>${free.map(t => `<li>${emojiFor(t.name)} ${esc(t.name)}</li>`).join('')}</ul></div>` : '');
+  }
+}
+
+function openPicker(){
+  const names = state ? state.family : [];
+  document.getElementById('names').innerHTML = names.map(n => `<button style="background:${colorFor(n)}" data-n="${esc(n)}">${esc(n)}</button>`).join('');
+  document.querySelectorAll('#names [data-n]').forEach(b => b.onclick = () => pick(b.dataset.n));
+  document.getElementById('picker').classList.add('show');
+}
+function pick(n){
+  me = n; try { localStorage.setItem('chores.me', n); } catch(e) {}
+  document.getElementById('picker').classList.remove('show'); render();
+}
+function addName(){
+  const n = document.getElementById('newName').value.trim();
+  if (!n) return;
+  pick(n);
+  google.script.run.withSuccessHandler(s => { state = s; render(); }).withFailureHandler(fail).addMember(n);
+}
+document.getElementById('newName').addEventListener('keydown', e => { if (e.key === 'Enter') addName(); });
+document.getElementById('picker').addEventListener('click', e => { if (e.target.id === 'picker' && me) e.target.classList.remove('show'); });
+
+load();
+setInterval(() => { if (!busy && document.visibilityState === 'visible') google.script.run.withSuccessHandler(s => { if(!busy){ state = s; render(); } }).getState(); }, 30000);
+</script>
+</body>
+</html>
